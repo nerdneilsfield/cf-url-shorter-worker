@@ -35,7 +35,7 @@ A fast, edge-compute URL shortener built with Cloudflare Workers, D1 (SQLite), K
 
 - **D1 (SQLite)**: Source of truth for link data
 - **Workers KV**: Global cache with 5-30s staleness tolerance
-- **Cache API**: Per-PoP response caching for sub-10ms redirects
+- **Cache API**: Per-PoP response caching for sub-10ms redirects; also caches 404s (negative cache) so unknown slugs never cost a KV write
 - **Workers Analytics Engine**: Non-blocking visit event collection
 
 ## Quick Start
@@ -209,6 +209,11 @@ cp .dev.vars.example .dev.vars
 - **SQL injection prevention**: Parameterized queries only (prepare/bind pattern)
 - **No PII collection**: Analytics track aggregate data only
 - **Secrets management**: Credentials stored as Wrangler Secrets (encrypted at rest)
+- **Scanner traffic**: Invalid slugs (e.g. `wp-login.php`, `.env`) are rejected before any cache/KV/D1 access. To stop such requests before they even invoke the Worker, you can add a WAF custom rule (action: Block) on your zone, for example:
+
+  ```
+  (http.host eq "YOUR_DOMAIN" and (http.user_agent eq "" or http.request.uri.path contains ".php" or http.request.uri.path contains ".env"))
+  ```
 
 ## Constitution Compliance
 

@@ -1,12 +1,14 @@
 /**
  * Redirect handler - GET /:slug
  * Implements multi-tier caching: Cache API → KV → D1
+ * Not-found results are cached in Cache API only (never in KV)
  * Per Constitution v1.1.0: Use env.DOMAIN for cache keys, target <50ms CPU time
  */
 
 import { getLink } from '../services/links.js';
-import { getCachedLink, setCachedLink, setNegativeCache } from '../services/cache.js';
+import { getCachedLink, setCachedLink, cacheNotFoundResponse } from '../services/cache.js';
 import { recordVisit } from '../services/analytics.js';
+import { isValidSlug } from '../models/link.js';
 
 /**
  * Handle redirect requests
@@ -17,6 +19,12 @@ import { recordVisit } from '../services/analytics.js';
  * @returns {Response} Redirect or 404 response
  */
 export async function handleRedirect(request, env, ctx, slug) {
+  // Reject slugs that can never exist (e.g. scanner paths like `alfa.php`, `.env`)
+  // before touching Cache API, KV or D1
+  if (!isValidSlug(slug)) {
+    return create404Response();
+  }
+
   const cache = caches.default;
   const now = Math.floor(Date.now() / 1000);
 
@@ -26,6 +34,11 @@ export async function handleRedirect(request, env, ctx, slug) {
   // Try Cache API first (fastest)
   let response = await cache.match(cacheKey);
   if (response) {
+    // Cached negative result: skip KV/D1 and don't count it as a visit
+    if (response.status === 404) {
+      return response;
+    }
+
     // Record analytics (non-blocking)
     recordVisit(env, ctx, slug, request);
     return response;
@@ -55,9 +68,10 @@ export async function handleRedirect(request, env, ctx, slug) {
   const link = await getLink(env, slug);
 
   if (!link) {
-    // Not found - set negative cache
-    await setNegativeCache(env, slug);
-    return create404Response();
+    // Not found - negative cache in Cache API (no KV write)
+    response = create404Response();
+    ctx.waitUntil(cacheNotFoundResponse(cache, cacheKey, response.clone()));
+    return response;
   }
 
   // Check if expired

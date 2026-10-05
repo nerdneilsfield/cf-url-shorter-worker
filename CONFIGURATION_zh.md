@@ -485,8 +485,8 @@ crons = ["0 2 * * 0"]    # 每周日 UTC 时间凌晨 2 点
 // KV 缓存 TTL（边缘缓存持续时间）
 cacheTtl: 120  // 默认：2 分钟
 
-// 负缓存 TTL
-expirationTtl: 60  // 默认：1 分钟
+// 负缓存 TTL（404 只缓存在各 PoP 的 Cache API 中，不写入 KV）
+export const NEGATIVE_CACHE_TTL = 300;  // 默认：5 分钟
 ```
 
 ### 自定义分析保留期

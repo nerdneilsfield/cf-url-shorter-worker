@@ -10,6 +10,22 @@ const MAX_TARGET_LENGTH = 2048;
 const ALLOWED_STATUSES = [301, 302, 307, 308];
 
 /**
+ * Check whether a string can be a valid slug (same rules as validateLink)
+ * Used on the redirect hot path to reject junk paths (e.g. `wp-login.php`, `.env`)
+ * before any Cache API / KV / D1 access.
+ * @param {string} slug - Candidate slug
+ * @returns {boolean} True if the slug could exist
+ */
+export function isValidSlug(slug) {
+  return (
+    typeof slug === 'string' &&
+    slug.length >= MIN_SLUG_LENGTH &&
+    slug.length <= MAX_SLUG_LENGTH &&
+    SLUG_REGEX.test(slug)
+  );
+}
+
+/**
  * Validate a link object
  * @param {Object} data - Link data to validate
  * @param {string} data.slug - Short URL alias

@@ -35,7 +35,7 @@
 
 - **D1 (SQLite)**: 链接数据的真实来源
 - **Workers KV**: 全球缓存，容忍 5-30 秒延迟
-- **Cache API**: 每个 PoP 的响应缓存，实现 <10ms 重定向
+- **Cache API**: 每个 PoP 的响应缓存，实现 <10ms 重定向；同时缓存 404（负缓存），不存在的别名不会产生 KV 写入
 - **Workers Analytics Engine**: 非阻塞访问事件收集
 
 ## 快速开始
@@ -209,6 +209,11 @@ cp .dev.vars.example .dev.vars
 - **SQL 注入防护**: 仅使用参数化查询（prepare/bind 模式）
 - **不收集 PII**: 分析仅追踪聚合数据
 - **密钥管理**: 凭据作为 Wrangler Secrets 存储（静态加密）
+- **扫描器流量**: 非法别名（如 `wp-login.php`、`.env`）在访问任何缓存/KV/D1 之前直接返回 404。若想在 Worker 执行前就拦截这类请求，可以在域名上添加一条 WAF 自定义规则（动作：阻止），例如：
+
+  ```
+  (http.host eq "YOUR_DOMAIN" and (http.user_agent eq "" or http.request.uri.path contains ".php" or http.request.uri.path contains ".env"))
+  ```
 
 ## 宪法合规性
 

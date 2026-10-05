@@ -6,7 +6,7 @@
 import { validateLink } from '../models/link.js';
 import { generateSlug } from '../utils/slug.js';
 import { createLink, getLink, updateLink, deleteLink, listLinks } from '../services/links.js';
-import { setCachedLink, invalidateLink } from '../services/cache.js';
+import { setCachedLink, invalidateLink, purgeCachedResponse } from '../services/cache.js';
 import { requireAuth } from '../middleware/auth.js';
 
 /**
@@ -49,6 +49,10 @@ export async function handleCreateLink(request, env, ctx) {
 
     // Cache in KV
     await setCachedLink(env, slug, { target, status, expiresAt });
+
+    // Drop a cached 404 for this slug in this PoP (best effort; other PoPs
+    // expire it within NEGATIVE_CACHE_TTL seconds)
+    ctx.waitUntil(purgeCachedResponse(env, slug).catch(() => {}));
 
     return jsonResponse(link, 201);
   } catch (error) {

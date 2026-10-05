@@ -481,8 +481,8 @@ Adjust cache TTLs in `worker/src/services/cache.js`:
 // KV cache TTL (edge cache duration)
 cacheTtl: 120  // Default: 2 minutes
 
-// Negative cache TTL
-expirationTtl: 60  // Default: 1 minute
+// Negative cache TTL (404s are cached per PoP in Cache API, never in KV)
+export const NEGATIVE_CACHE_TTL = 300;  // Default: 5 minutes
 ```
 
 ### Custom Analytics Retention
